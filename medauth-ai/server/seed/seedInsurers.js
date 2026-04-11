@@ -1,5 +1,8 @@
 // MedAuth AI - seed/seedInsurers.js - Seed database with insurers and patients
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+const path = require('path');
+require('dotenv').config({ 
+  path: path.join(__dirname, '../.env') 
+});
 const mongoose = require('mongoose');
 const Insurer = require('../models/Insurer');
 const Patient = require('../models/Patient');
@@ -46,9 +49,14 @@ const insurersData = [
 
 const seedData = async () => {
   try {
-    const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/medauth_local';
+    const uri = process.env.MONGODB_URI;
+    if (!uri) {
+      console.error('ERROR: MONGODB_URI environment variable not set');
+      process.exit(1);
+    }
+    console.log('Connecting to MongoDB Atlas...');
     await mongoose.connect(uri);
-    console.log('MongoDB Connected for Seeding...');
+    console.log('Connected to MongoDB Atlas successfully');
 
     const seededInsurers = {};
 
@@ -110,11 +118,13 @@ const seedData = async () => {
        console.log('Linked James Thornton to Dr. Maria Lopez');
     }
 
-    console.log('Data seeding completed successfully!');
-    mongoose.disconnect();
+    console.log('Seeding complete');
+    await mongoose.disconnect();
+    process.exit(0);
 
-  } catch (error) {
-    console.error('Seeding error:', error);
+  } catch (err) {
+    console.error('Seeding error:', err.message);
+    await mongoose.disconnect();
     process.exit(1);
   }
 };

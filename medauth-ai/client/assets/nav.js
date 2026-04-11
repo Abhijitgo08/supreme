@@ -3,7 +3,9 @@
 window.APP_BASE = window.location.origin;
 
 window.navigateTo = function(page) {
-  var url = window.APP_BASE + '/client/pages/' + page;
+  // Strip any path prefixes if accidentally passed
+  var filename = page.split('/').pop();
+  var url = window.location.origin + '/client/pages/' + filename;
   if (typeof gsap !== 'undefined' && gsap.to) {
     gsap.to('body', {
       opacity: 0,
