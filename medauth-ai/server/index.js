@@ -5,7 +5,6 @@ if (process.env.NODE_ENV !== 'production') {
 require('express-async-errors');
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const connectDB = require('./config/db');
 
 // Connect to MongoDB
