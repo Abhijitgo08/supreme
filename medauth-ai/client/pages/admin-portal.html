@@ -9,6 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="/client/assets/nav.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
 </head>
 <body>
@@ -16,20 +17,7 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
-
-    function navigateTo(page) {
-      const base = window.location.origin;
-      const url = base + '/client/pages/' + page;
-      if (typeof gsap !== 'undefined') {
-        gsap.to('body', {
-          opacity: 0, y: -20, duration: 0.3, ease: 'power2.in',
-          onComplete: () => { window.location.href = url; }
-        });
-      } else {
-        window.location.href = url;
-      }
-    }
+    var API_BASE = window.location.origin
 
     fetch('../components/navbar.html').then(res => res.text())
       .then(html => { document.getElementById('nav-placeholder').innerHTML = html; });
@@ -44,16 +32,12 @@
       const [loading, setLoading] = useState(true);
 
       useEffect(() => {
-        if (typeof gsap !== 'undefined') {
-          window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
-          gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
-        }
         
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const parsed = JSON.parse(stored);
           if (parsed.role !== 'admin') {
-             window.navigateTo('select-user.html');
+             navigateTo('select-user.html');
              return;
           }
           setUser(parsed);
@@ -66,7 +50,7 @@
              setLoading(false);
           });
         } else {
-          window.location.href = 'select-user.html';
+          navigateTo('select-user.html');
         }
       }, []);
 
@@ -83,7 +67,7 @@
                  <p style={{color: 'var(--text-muted)'}}>System Administrator ({user.name}) | Highest Privilege Area</p>
               </div>
               <div className="flex gap-4">
-                 <button className="btn btn-outline" onClick={() => window.navigateTo('dashboard.html')} style={{padding: '12px 24px'}}>Go to Main Dashboard</button>
+                 <button className="btn btn-outline" onClick={() => navigateTo('dashboard.html')} style={{padding: '12px 24px'}}>Go to Main Dashboard</button>
               </div>
            </div>
 

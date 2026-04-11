@@ -50,6 +50,14 @@ app.get('/api/health/ai', (req, res) => {
   });
 });
 
+// Any unknown non-API route also goes to landing
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/api') && !req.path.startsWith('/client')) {
+    return res.redirect('/client/pages/landing.html');
+  }
+  next();
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
