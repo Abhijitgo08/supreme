@@ -1,5 +1,7 @@
-// MedAuth AI - index.js - Express app entrypoint
-require('dotenv').config();
+const path = require('path');
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config({ path: path.join(__dirname, '.env') });
+}
 require('express-async-errors');
 const express = require('express');
 const cors = require('cors');

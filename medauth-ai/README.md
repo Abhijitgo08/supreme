@@ -20,8 +20,8 @@ An AI-powered Prior Authorization system.
    ```bash
    cd server
    npm install
-   npm run seed
-   npm run dev
+   node seed/seedInsurers.js
+   node index.js
    ```
 
 4. **Launch Frontend**
