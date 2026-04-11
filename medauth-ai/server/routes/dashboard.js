@@ -34,7 +34,7 @@ router.get('/metrics', async (req, res) => {
   const avgProcessingTimeMs = (statsAggregate[0]?.avgTimeMs || 0) || 0;
   const avgProcessingTimeSec = avgProcessingTimeMs / 1000;
   
-  const avgCostSaved = totalCases > 0 ? ((avgProcessingTimeMs - 47000) / 1000 * 8.5) : 0;
+  const avgCostSaved = totalCases > 0 ? ((47000 - avgProcessingTimeMs) / 1000 * 8.5) : 0;
   const doctorHoursSaved = totalCases > 0 ? (totalCases * 0.25) : 0;
 
   const casesPerDayAgg = await Case.aggregate([

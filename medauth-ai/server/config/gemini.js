@@ -9,8 +9,9 @@ const callGemini = async (systemPrompt, userPrompt) => {
   console.log('Gemini initialized — model:', model, '| key configured:', !!apiKey);
 
   if (!apiKey) {
-    console.warn('WARNING: GEMINI_API_KEY not set — AI agents will fail');
-    return null;
+    console.warn('WARNING: GEMINI_API_KEY not set — falling back to Groq');
+    const { callGroq } = require('./groq');
+    return await callGroq(systemPrompt, userPrompt);
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
