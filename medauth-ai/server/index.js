@@ -17,7 +17,10 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // Serve the client application statically
-app.use(express.static(path.join(__dirname, '../client')));
+app.use('/client', express.static(path.join(__dirname, '../client')));
+app.get('/', (req, res) => {
+  res.redirect('/client/pages/landing.html');
+});
 
 // Routes
 app.use('/api/cases', require('./routes/cases'));
@@ -45,15 +48,6 @@ app.get('/api/health/ai', (req, res) => {
     provider: 'Google Gemini (free tier)',
     keyConfigured: keySet
   });
-});
-
-// Wildcard routing to handle frontend client mapping strictly AFTER all APIs
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '../client/index.html'));
-  } else {
-    res.status(404).json({ success: false, message: 'API Route Not Found' });
-  }
 });
 
 // Error handling middleware

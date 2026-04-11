@@ -27,11 +27,18 @@
 
     gsap.registerPlugin(ScrollTrigger);
 
-    window.navigateTo = (url) => {
-      gsap.to('body', {opacity: 0, y: -20, duration: 0.3, ease: 'power2.in', onComplete: () => {
+    function navigateTo(page) {
+      const base = window.location.origin;
+      const url = base + '/client/pages/' + page;
+      if (typeof gsap !== 'undefined') {
+        gsap.to('body', {
+          opacity: 0, y: -20, duration: 0.3, ease: 'power2.in',
+          onComplete: () => { window.location.href = url; }
+        });
+      } else {
         window.location.href = url;
-      }});
-    };
+      }
+    }
 
     fetch('../components/navbar.html')
       .then(res => res.text())
@@ -43,8 +50,10 @@
 
     function Landing() {
       useEffect(() => {
-        window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
-        gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
+        if (typeof gsap !== 'undefined') {
+          window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
+          gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
+        }
 
         gsap.fromTo('.hero-word', 
             {y: 80, opacity: 0, rotateX: -40}, 
