@@ -2,8 +2,12 @@
 
 const mongoose = require('mongoose');
 
-const MONGODB_URI = process.env.MONGODB_URI ||
-  'mongodb+srv://db_user:zSJGYWnb15TKsLqo@cluster0.gaxkzvv.mongodb.net/medauth?retryWrites=true&w=majority&appName=Cluster0';
+let MONGODB_URI = process.env.MONGODB_URI || '';
+const ATLAS_URI = 'mongodb+srv://db_user:zSJGYWnb15TKsLqo@cluster0.gaxkzvv.mongodb.net/medauth?retryWrites=true&w=majority&appName=Cluster0';
+
+if (!MONGODB_URI || MONGODB_URI.includes('127.0.0.1') || MONGODB_URI.includes('localhost')) {
+  MONGODB_URI = ATLAS_URI;
+}
 
 const connectDB = async () => {
   try {

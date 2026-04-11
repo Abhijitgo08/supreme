@@ -8,24 +8,69 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const mongoose = require('mongoose');
+const Insurer = require('../models/Insurer');
+const Patient = require('../models/Patient');
 
-// Hardcode Atlas URI as fallback for build step reliability
-// Render injects env vars but sometimes seed runs before they propagate
-const MONGODB_URI = process.env.MONGODB_URI || 
-  'mongodb+srv://db_user:zSJGYWnb15TKsLqo@cluster0.gaxkzvv.mongodb.net/medauth?retryWrites=true&w=majority&appName=Cluster0';
+let MONGODB_URI = process.env.MONGODB_URI || '';
+const ATLAS_URI = 'mongodb+srv://db_user:zSJGYWnb15TKsLqo@cluster0.gaxkzvv.mongodb.net/medauth?retryWrites=true&w=majority&appName=Cluster0';
 
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('MONGODB_URI set:', !!process.env.MONGODB_URI);
-console.log('Connecting to:', MONGODB_URI.substring(0, 40) + '...');
+// Override if URI is empty OR points to local host (common misconfiguration)
+if (!MONGODB_URI || MONGODB_URI.includes('127.0.0.1') || MONGODB_URI.includes('localhost')) {
+  console.log('Detected local/missing MONGODB_URI, forcing Atlas connection...');
+  MONGODB_URI = ATLAS_URI;
+}
 
-async function seedData() {
+const insurersData = [
+  {
+    name: 'UnitedHealthcare',
+    code: 'UHC',
+    logo: 'uhc-logo.png', // Not used strictly but requested
+    color: '#3b82f6', // blue
+    rules: [
+      { procedureCode: '70553', procedureName: 'MRI Brain with contrast', covered: true, requiresPriorAuth: true, policySection: '4.1', criteria: ['Neurological symptoms documented', 'Symptom duration > 6 weeks', 'Failed conservative treatment'] },
+      { procedureCode: '27447', procedureName: 'Total Knee Replacement', covered: true, requiresPriorAuth: true, policySection: '4.2.1', criteria: ['X-ray confirming severe OA', 'BMI documented', '6 weeks physical therapy failed', 'Pain scale 7+'] },
+      { procedureCode: 'J0135', procedureName: 'Adalimumab (Humira) injection', covered: true, requiresPriorAuth: true, policySection: '6.3', stepTherapyRequired: true, criteria: ['2 conventional DMARDs failed', 'Rheumatologist documented', 'TB test negative'] },
+      { procedureCode: '93458', procedureName: 'Cardiac Catheterization', covered: true, requiresPriorAuth: true, policySection: '5.1', criteria: ['Stress test abnormal', 'Chest pain documented', 'Cardiologist referral'] },
+      { procedureCode: '43239', procedureName: 'Upper GI Endoscopy', covered: true, requiresPriorAuth: true, policySection: '8.2', criteria: ['Persistent GERD > 8 weeks', 'Failed PPI therapy', 'Dysphagia present'] }
+    ]
+  },
+  {
+    name: 'Aetna',
+    code: 'AETNA',
+    logo: 'aetna-logo.png',
+    color: '#7c6fcd', // purple
+    rules: [
+      { procedureCode: '70553', procedureName: 'MRI Brain with contrast', covered: true, requiresPriorAuth: false, policySection: '3.1', criteria: ['Physician order present', 'Clinical indication documented'] },
+      { procedureCode: '33533', procedureName: 'Coronary Artery Bypass', covered: true, requiresPriorAuth: true, policySection: '5.4', criteria: ['3-vessel disease confirmed', 'Cardiologist recommendation', 'Failed medical management'] },
+      { procedureCode: '43770', procedureName: 'Laparoscopic Gastric Banding', covered: true, requiresPriorAuth: true, policySection: '9.1', criteria: ['BMI >= 40 OR BMI >= 35 with comorbidity', '6-month supervised diet documented', 'Psych evaluation cleared', 'Surgeon board certified'] },
+      { procedureCode: '90837', procedureName: 'Psychotherapy 60 min', covered: true, requiresPriorAuth: false, policySection: '10.1', criteria: ['Diagnosis code present', 'Treatment plan on file'] }
+    ]
+  },
+  {
+    name: 'Cigna',
+    code: 'CIGNA',
+    logo: 'cigna-logo.png',
+    color: '#2dd4bf', // teal
+    rules: [
+      { procedureCode: '27447', procedureName: 'Total Knee Replacement', covered: true, requiresPriorAuth: true, policySection: '4.5', criteria: ['Conservative treatment failed min 3 months', 'Functional limitation documented', 'Orthopedic surgeon recommendation'] },
+      { procedureCode: '95810', procedureName: 'Polysomnography (Sleep Study)', covered: true, requiresPriorAuth: false, policySection: '11.1', criteria: ['Sleep disorder symptoms documented'] },
+      { procedureCode: 'G0297', procedureName: 'Low-dose CT Lung Screening', covered: true, requiresPriorAuth: true, policySection: '12.3', criteria: ['Age 50-80', '20+ pack-year smoking history', 'Current smoker or quit < 15 years'] },
+      { procedureCode: '77520', procedureName: 'Proton Beam Therapy', covered: true, requiresPriorAuth: true, policySection: '14.1', criteria: ['Solid tumor diagnosis', 'Standard radiation contraindicated', 'Tumor board reviewed'] }
+    ]
+  }
+];
+
+const seedData = async () => {
   try {
+    console.log('NODE_ENV:', process.env.NODE_ENV);
+    console.log('MONGODB_URI set:', !!process.env.MONGODB_URI);
+    console.log('Connecting to:', MONGODB_URI.substring(0, 40) + '...');
+
     await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
     });
     console.log('Connected to MongoDB Atlas successfully');
-
 
     const seededInsurers = {};
 
@@ -96,7 +141,7 @@ async function seedData() {
     await mongoose.disconnect().catch(() => {});
     process.exit(1);
   }
-}
+};
 
 seedData();
 
