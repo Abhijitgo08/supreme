@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin Portal - MedAuth AI</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
+
+    window.navigateTo = (url) => {
+      gsap.to('body', {opacity: 0, y: -20, duration: 0.3, ease: 'power2.in', onComplete: () => {
+        window.location.href = url;
+      }});
+    };
+
+    fetch('../components/navbar.html').then(res => res.text())
+      .then(html => { document.getElementById('nav-placeholder').innerHTML = html; });
+
+    const { useEffect, useState } = React;
+    const STORAGE_KEY = 'medauth_selected_user';
+    const API_URL = `${API_BASE}/api`;
+
+    function AdminPortal() {
+      const [user, setUser] = useState(null);
+      const [logs, setLogs] = useState([]);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
+        gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
+        
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.role !== 'admin') {
+             window.navigateTo('select-user.html');
+             return;
+          }
+          setUser(parsed);
+          
+          axios.get(`${API_URL}/auditlogs?limit=50`).then(res => {
+             setLogs(res.data.data || []);
+             setLoading(false);
+          }).catch(err => {
+             console.error(err);
+             setLoading(false);
+          });
+        } else {
+          window.location.href = 'select-user.html';
+        }
+      }, []);
+
+      const [expandedLog, setExpandedLog] = useState(null);
+
+      if (loading || !user) return <div className="container mt-8 text-center">Loading Administrator Security Console...</div>;
+
+      return (
+        <div className="container" style={{paddingTop: '60px', paddingBottom: '80px', maxWidth: '1200px'}}>
+           
+           <div className="flex justify-between align-center mb-8 pb-4" style={{borderBottom: '1px solid var(--border)'}}>
+              <div>
+                 <h1 style={{fontSize: '2.5rem', marginBottom: '0.5rem'}}>Security & Audit Console</h1>
+                 <p style={{color: 'var(--text-muted)'}}>System Administrator ({user.name}) | Highest Privilege Area</p>
+              </div>
+              <div className="flex gap-4">
+                 <button className="btn btn-outline" onClick={() => window.navigateTo('dashboard.html')} style={{padding: '12px 24px'}}>Go to Main Dashboard</button>
+              </div>
+           </div>
+
+           <div className="grid gap-6 mb-8" style={{gridTemplateColumns: 'repeat(3, 1fr)'}}>
+              <div className="card" style={{borderTop: '4px solid var(--amber)'}}>
+                 <div style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem'}}>System Status</div>
+                 <div className="flex align-center gap-2">
+                    <div style={{width: '12px', height: '12px', borderRadius: '50%', background: 'var(--green)', boxShadow: '0 0 10px var(--green)'}}></div>
+                    <span style={{fontWeight: 'bold', fontSize: '1.2rem'}}>Operational</span>
+                 </div>
+              </div>
+              <div className="card" style={{borderTop: '4px solid var(--blue)'}}>
+                 <div style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem'}}>Active Tokens (24h)</div>
+                 <div style={{fontWeight: 'bold', fontSize: '1.5rem'}}>12,408</div>
+              </div>
+              <div className="card" style={{borderTop: '4px solid var(--purple)'}}>
+                 <div style={{color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem'}}>Active Escaltion Queue</div>
+                 <div style={{fontWeight: 'bold', fontSize: '1.5rem', color: 'var(--coral)'}}>3 Actions Req.</div>
+              </div>
+           </div>
+
+           <div className="card">
+              <h2 style={{marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between'}}>
+                 System Audit Logs
+                 <span className="badge badge-amber" style={{fontSize: '0.8rem'}}>Top 50 Events</span>
+              </h2>
+              
+              <div style={{overflowX: 'auto'}}>
+                 <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
+                   <thead>
+                     <tr style={{borderBottom: '1px solid var(--border)', color: 'var(--text-muted)'}}>
+                       <th style={{padding: '12px'}}>Timestamp</th>
+                       <th style={{padding: '12px'}}>Agent</th>
+                       <th style={{padding: '12px'}}>Action</th>
+                       <th style={{padding: '12px'}}>Case Ref</th>
+                       <th style={{padding: '12px'}}>Data</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {logs.map((log) => (
+                       <React.Fragment key={log._id}>
+                          <tr style={{borderBottom: '1px solid rgba(255,255,255,0.05)', background: expandedLog === log._id ? 'var(--bg2)' : 'transparent'}}>
+                            <td style={{padding: '12px', fontSize: '0.9rem'}}>{new Date(log.timestamp).toLocaleString()}</td>
+                            <td style={{padding: '12px'}}><div className={`badge badge-${log.agent==='orchestrator'?'teal':'purple'}`}>{log.agent}</div></td>
+                            <td style={{padding: '12px'}}>{log.action}</td>
+                            <td style={{padding: '12px', fontFamily: 'monospace', fontSize: '0.85rem'}}>{log.caseId || 'N/A'}</td>
+                            <td style={{padding: '12px'}}>
+                               <button className="btn btn-outline" style={{padding: '4px 12px', fontSize: '0.8rem'}} 
+                                       onClick={() => setExpandedLog(expandedLog === log._id ? null : log._id)}>
+                                  {expandedLog === log._id ? 'Hide' : 'Inspect'}
+                               </button>
+                            </td>
+                          </tr>
+                          {expandedLog === log._id && (
+                             <tr style={{background: 'var(--bg2)'}}>
+                               <td colSpan="5" style={{padding: '16px'}}>
+                                  <pre style={{margin: 0, padding: '16px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', maxHeight: '300px', overflowY: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all'}}>
+                                     {JSON.stringify(log.dataPayload, null, 2)}
+                                  </pre>
+                               </td>
+                             </tr>
+                          )}
+                       </React.Fragment>
+                     ))}
+                   </tbody>
+                 </table>
+                 {logs.length === 0 && <div className="text-center" style={{padding: '40px', color: 'var(--text-muted)'}}>No recent audit logs available.</div>}
+              </div>
+           </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AdminPortal />);
+  </script>
+</body>
+</html>

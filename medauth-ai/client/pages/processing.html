@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Processing - MedAuth AI</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+  
+  <style>
+    .pulse-ring-container { position: relative; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; }
+    .pulse-ring { position: absolute; width: 100%; height: 100%; border-radius: 50%; border: 2px solid; opacity: 0; box-sizing: border-box; }
+    .pulse-core { position: absolute; width: 12px; height: 12px; border-radius: 50%; }
+    .status-w { border-color: var(--text-dim) !important; color: var(--text-dim) !important; }
+    .status-p { border-color: var(--teal) !important; color: var(--teal) !important; }
+    .status-c { border-color: var(--green) !important; color: var(--green) !important; }
+    
+    .conf-ring { transform: rotate(-90deg); transform-origin: 50% 50%; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+  </style>
+</head>
+<body style="background: var(--bg); overflow: hidden;">
+  <div id="nav-placeholder"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
+
+    window.navigateTo = (url) => {
+      gsap.to('body', {opacity: 0, y: -20, duration: 0.3, ease: 'power2.in', onComplete: () => {
+        window.location.href = url;
+      }});
+    };
+
+    fetch('../components/navbar.html').then(res => res.text())
+      .then(html => { document.getElementById('nav-placeholder').innerHTML = html; });
+
+    const { useEffect, useState, useRef } = React;
+    const API_URL = `${API_BASE}/api`;
+
+    function AgentCard({ agentKey, name, role, status, timeMs, color }) {
+      const ringRef = useRef(null);
+      
+      useEffect(() => {
+        if (status === 'processing') {
+          gsap.to(ringRef.current, { scale: 1.5, opacity: 0, duration: 1, repeat: -1, ease: 'power2.out' });
+        } else {
+          gsap.killTweensOf(ringRef.current);
+          gsap.set(ringRef.current, { opacity: 0 });
+        }
+      }, [status]);
+
+      return (
+        <div className="card flex align-center justify-between" style={{ borderLeft: `4px solid ${status==='waiting'?'var(--border)':color}`, opacity: status==='waiting'?0.5:1 }}>
+          <div>
+            <h3 style={{fontSize: '1.2rem', marginBottom: '0.25rem'}}>{name}</h3>
+            <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>{role}</div>
+            
+            {status === 'complete' && timeMs && (
+              <div style={{fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '0.5rem'}}>{(timeMs/1000).toFixed(1)}s</div>
+            )}
+          </div>
+          
+          <div className="pulse-ring-container">
+            {status === 'waiting' && <div style={{width: '24px', height: '24px', borderRadius: '50%', background: 'var(--border)'}}></div>}
+            {status === 'processing' && (
+              <>
+                <div ref={ringRef} className="pulse-ring" style={{borderColor: color, borderWidth: '2px'}}></div>
+                <div className="pulse-core" style={{background: color}}></div>
+              </>
+            )}
+            {status === 'complete' && (
+              <div style={{color: 'var(--green)', fontSize: '1.5rem'}}>✔</div>
+            )}
+             {status === 'error' && (
+              <div style={{color: 'var(--red)', fontSize: '1.5rem'}}>✖</div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function ProcessingPage() {
+      const caseId = new URLSearchParams(window.location.search).get('caseId');
+      
+      const [agents, setAgents] = useState({
+        document: { status: 'waiting', timeMs: null },
+        clinical: { status: 'waiting', timeMs: null },
+        policy: { status: 'waiting', timeMs: null },
+        escalation: { status: 'waiting', timeMs: null }
+      });
+      const [logs, setLogs] = useState(["[ Orchrstrator ] Connecting to SSE stream..."]);
+      const [confidence, setConfidence] = useState(0);
+
+      useEffect(() => {
+        window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
+        gsap.fromTo('body', {opacity: 0, scale: 0.98}, {opacity: 1, scale: 1, duration: 0.5, ease: 'power2.out'});
+
+        if (!caseId) {
+          alert('No Case ID provided.');
+          return window.navigateTo('dashboard.html');
+        }
+
+        const source = new EventSource(`${API_URL}/cases/${caseId}/stream`);
+        
+        let localLogs = [];
+        const addLog = (msg) => {
+          localLogs = [...localLogs, msg].slice(-8);
+          setLogs(localLogs);
+        };
+
+        source.onmessage = (e) => {
+          // Keep-alive check
+          if (e.data === 'ping' || e.data.startsWith(':')) return;
+
+          try {
+            const payload = JSON.parse(e.data);
+            const { agent, status, data } = payload;
+            
+            if (agent && agent !== 'system') {
+                setAgents(prev => ({
+                    ...prev,
+                    [agent]: { status, timeMs: data ? data.processingTimeMs : null }
+                }));
+            }
+
+            if (status === 'started') {
+              addLog(`[ ${agent.toUpperCase()} ] Processing started...`);
+            } else if (status === 'complete') {
+              addLog(`[ ${agent.toUpperCase()} ] Completed in ${(data.processingTimeMs/1000).toFixed(1)}s.`);
+              
+              if (agent === 'document') {
+                  setConfidence(25);
+              } else if (agent === 'clinical') {
+                  setConfidence(50);
+              } else if (agent === 'policy') {
+                  setConfidence(75);
+              } else if (agent === 'escalation') {
+                  setConfidence(data.confidenceScore || 90);
+                  source.close();
+                  addLog(`[ ORCHESTRATOR ] Final Decision: ${data.overallRecommendation}`);
+                  
+                  setTimeout(() => {
+                      gsap.to('body', {opacity: 0, y: -20, duration: 0.5, onComplete: () => {
+                          window.location.href = `result.html?caseId=${caseId}`;
+                      }});
+                  }, 1500);
+              }
+            } else if (status === 'error') {
+               addLog(`[ ${agent.toUpperCase()} ] ERROR: ${data}`);
+            }
+
+          } catch (err) {
+            console.error("SSE parse error", err);
+          }
+        };
+
+        source.onerror = (e) => {
+          console.error("SSE Error:", e);
+          addLog(`[ SYSTEM ] SSE Connection lost or closed.`);
+          source.close();
+        };
+
+        return () => source.close();
+      }, [caseId]);
+
+      // Progress calculation for SVG
+      const circumference = 2 * Math.PI * 54;
+      const offset = circumference - (confidence / 100) * circumference;
+
+      return (
+        <div className="container" style={{paddingTop: '60px'}}>
+           <div className="flex justify-between align-center mb-8">
+             <div>
+               <h1 style={{fontSize: '2rem'}}>Analyzing Case</h1>
+               <div className="badge badge-purple mt-2" style={{fontSize: '0.9rem'}}>{caseId}</div>
+             </div>
+
+             <div style={{position: 'relative', width: '120px', height: '120px'}}>
+               <svg width="120" height="120" viewBox="0 0 120 120">
+                  <circle cx="60" cy="60" r="54" fill="transparent" stroke="var(--border)" strokeWidth="8" />
+                  <circle className="conf-ring" cx="60" cy="60" r="54" fill="transparent" stroke="var(--blue)" strokeWidth="8" 
+                          strokeDasharray={circumference} strokeDashoffset={offset} />
+               </svg>
+               <div className="flex-col align-center justify-center" style={{position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'}}>
+                 <div style={{fontSize: '1.5rem', fontWeight: 'bold'}}>{confidence}%</div>
+               </div>
+             </div>
+           </div>
+
+           <div className="grid gap-6 mb-8" style={{gridTemplateColumns: 'repeat(2, 1fr)'}}>
+             <AgentCard agentKey="document" name="Document AI" role="Extracts JSON from Text" status={agents.document.status} timeMs={agents.document.timeMs} color="var(--teal)" />
+             <AgentCard agentKey="clinical" name="Clinical AI" role="Determines Necessity" status={agents.clinical.status} timeMs={agents.clinical.timeMs} color="var(--blue)" />
+             <AgentCard agentKey="policy" name="Policy AI" role="Matches Rule Criteria" status={agents.policy.status} timeMs={agents.policy.timeMs} color="var(--amber)" />
+             <AgentCard agentKey="escalation" name="Escalation AI" role="Final Decision & Scoring" status={agents.escalation.status} timeMs={agents.escalation.timeMs} color="var(--coral)" />
+           </div>
+
+           <div className="terminal">
+             {logs.map((log, i) => (
+               <div key={i} style={{marginBottom: '4px', opacity: i === logs.length-1 ? 1 : 0.7}}>
+                {'>'} {log}
+               </div>
+             ))}
+             <div className="mt-2" style={{animation: 'pulse 1s infinite alternate'}}>_</div>
+           </div>
+
+           <style>{`@keyframes pulse { from { opacity: 0 } to { opacity: 1 } }`}</style>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<ProcessingPage />);
+  </script>
+</body>
+</html>

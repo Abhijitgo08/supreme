@@ -1,0 +1,22 @@
+PATIENT CLINICAL RECORD & PRIOR AUTHORIZATION REQUEST
+
+PATIENT INFORMATION:
+Name: Rahul Kumar
+DOB: 12/04/1975
+ID: INS-2024-8742
+
+ATTENDING PHYSICIAN:
+Dr. Priya Sharma, MD (Cardiology)
+
+CLINICAL RATIONALE:
+Patient presents with worsening typical exertional angina (Class III CCS) over the past 3 weeks. Symptoms are no longer responsive to maximum tolerated medical therapy including Beta-blockers, Nitrates, and Calcium Channel Blockers.
+
+Recent stress echocardiogram (dated 10/10/2026) revealed reversible ischemia in the anteroseptal territory. The patient has a known history of hypertension and hyperlipidemia. Due to the high risk of impending myocardial infarction and failure of conservative management, an urgent cardiac catheterization space is highly recommended.
+
+REQUESTED PROCEDURE:
+Procedure: Left Heart Catheterization (Coronary Angiography)
+CPT Code: 93452
+Diagnosis Code (ICD-10): I20.9 (Angina pectoris, unspecified)
+
+URGENCY:
+High - Recommended within 48-72 hours.

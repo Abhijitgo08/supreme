@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - MedAuth AI</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
+
+    window.navigateTo = (url) => {
+      gsap.to('body', {opacity: 0, y: -20, duration: 0.3, ease: 'power2.in', onComplete: () => {
+        window.location.href = url;
+      }});
+    };
+
+    fetch('../components/navbar.html').then(res => res.text())
+      .then(html => { document.getElementById('nav-placeholder').innerHTML = html; });
+
+    const { useEffect, useState, useRef } = React;
+    const API_URL = `${API_BASE}/api`;
+
+    function Counter({ value, decimals = 0, suffix = '', prefix = '' }) {
+      const elRef = useRef(null);
+      useEffect(() => {
+        if(elRef.current) {
+          gsap.to(elRef.current, {
+            innerText: value, 
+            duration: 1.5, 
+            ease: 'power2.out',
+            snap: { innerText: 1 / Math.pow(10, decimals) },
+            onUpdate: function() {
+              elRef.current.innerText = prefix + Number(elRef.current.innerText).toFixed(decimals) + suffix;
+            }
+          });
+        }
+      }, [value, decimals, suffix, prefix]);
+      
+      return <span ref={elRef}>0</span>;
+    }
+
+    function Dashboard() {
+      const [data, setData] = useState(null);
+      const [cases, setCases] = useState([]);
+      const [insurers, setInsurers] = useState([]);
+      
+      const lineChartRef = useRef(null);
+      const pieChartRef = useRef(null);
+      
+      const loadData = async () => {
+        try {
+          const [metricsRes, casesRes, insurersRes] = await Promise.all([
+            axios.get(`${API_URL}/dashboard/metrics`),
+            axios.get(`${API_URL}/cases`),
+            axios.get(`${API_URL}/insurers`)
+          ]);
+          setData(metricsRes.data.data);
+          setCases(casesRes.data.data);
+          setInsurers(insurersRes.data.data);
+        } catch(e) {
+             console.error("Failed loading dashboard data", e);
+        }
+      };
+
+      useEffect(() => {
+        window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
+        gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
+        loadData();
+      }, []);
+
+      useEffect(() => {
+        if (!data || !lineChartRef.current || !pieChartRef.current) return;
+        
+        Chart.defaults.color = '#8888a8';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+
+        // Clean up previous charts to prevent "Canvas is already in use" crash on refresh
+        const existingLine = Chart.getChart(lineChartRef.current);
+        if (existingLine) existingLine.destroy();
+        const existingPie = Chart.getChart(pieChartRef.current);
+        if (existingPie) existingPie.destroy();
+
+        // Line Chart
+        new Chart(lineChartRef.current, {
+          type: 'line',
+          data: {
+            labels: data.casesPerDay.dates,
+            datasets: [{
+              label: 'Cases Processed',
+              data: data.casesPerDay.counts,
+              borderColor: '#7c6fcd',
+              backgroundColor: 'rgba(124, 111, 205, 0.1)',
+              tension: 0.4,
+              fill: true
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // Pie Chart
+        new Chart(pieChartRef.current, {
+          type: 'doughnut',
+          data: {
+            labels: ['Approved', 'Denied', 'Escalated'],
+            datasets: [{
+               data: [data.approvedCount, data.deniedCount, data.escalatedCount],
+               backgroundColor: ['#10b981', '#ef4444', '#f59e0b'],
+               borderWidth: 0
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+        });
+
+        // Animations
+        gsap.from('.milestone', {x: 60, opacity: 0, stagger: 0.15});
+        gsap.from('tbody tr', {x: -20, opacity: 0, stagger: 0.05});
+
+      }, [data]);
+
+      if (!data) return <div className="container mt-8 text-center">Loading Analytics...</div>;
+
+      return (
+        <div className="container w-full" style={{paddingTop: '40px', paddingBottom: '80px', maxWidth: '1400px'}}>
+          
+          {/* Header Row */}
+          <div className="flex justify-between align-center mb-8">
+            <h1 style={{fontSize: '2.5rem'}}>MedAuth AI Dashboard</h1>
+            <div className="flex gap-4">
+              <select style={{width: '200px'}}>
+                <option>Today</option>
+                <option selected>Last 7 Days</option>
+                <option>Last 30 Days</option>
+                <option>All Time</option>
+              </select>
+              <button className="btn btn-outline" onClick={loadData}>Refresh</button>
+            </div>
+          </div>
+
+          {/* Metrics Grid */}
+          <div className="grid gap-8 mb-12" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))'}}>
+            <div className="card">
+              <div style={{color: 'var(--text-muted)'}}>Total Cases Processed</div>
+              <div style={{fontSize: '3rem', fontWeight: 'bold', color: 'var(--blue)'}}><Counter value={data.totalCases} /></div>
+            </div>
+            <div className="card">
+              <div style={{color: 'var(--text-muted)'}}>Approval Rate</div>
+              <div style={{fontSize: '3rem', fontWeight: 'bold', color: 'var(--green)'}}><Counter value={data.approvalRate} decimals={1} suffix="%" /></div>
+            </div>
+            <div className="card">
+              <div style={{color: 'var(--text-muted)'}}>Avg Decision Time</div>
+              <div style={{fontSize: '3rem', fontWeight: 'bold', color: 'var(--purple)'}}><Counter value={data.avgProcessingTimeSec} decimals={1} suffix="s" /></div>
+            </div>
+            <div className="card">
+              <div style={{color: 'var(--text-muted)'}}>Cost Per Case Saved</div>
+              <div style={{fontSize: '3rem', fontWeight: 'bold', color: 'var(--amber)'}}><Counter value={data.avgCostSaved} decimals={2} prefix="$" /></div>
+            </div>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid gap-10 mb-12" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', alignItems: 'start'}}>
+            <div className="card flex-col">
+              <h3 className="mb-4">Cases Volume</h3>
+              {/* CRUCIAL AMENDMENT: parent div with fixed height + canvas with explicit attributes */}
+              <div style={{height: '300px', width: '100%', position: 'relative'}}>
+                <canvas ref={lineChartRef} width="800" height="300"></canvas>
+              </div>
+            </div>
+            <div className="card flex-col">
+              <h3 className="mb-4">Decision Breakdown</h3>
+              <div style={{height: '300px', width: '100%', position: 'relative'}}>
+                <canvas ref={pieChartRef} width="400" height="300"></canvas>
+              </div>
+            </div>
+          </div>
+
+          {/* Milestones */}
+          <div className="mb-12">
+            <h2 className="mb-6">Project Milestones</h2>
+            <div className="grid gap-6" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))'}}>
+               {data.milestones.map((m, i) => {
+                 let dotColor = 'var(--bg2)'; let borderColor = 'var(--border)';
+                 if (m.status === 'complete') { dotColor = 'var(--green)'; borderColor = 'var(--green)'; }
+                 if (m.status === 'active') { dotColor = 'var(--amber)'; borderColor = 'var(--amber)'; }
+                 
+                 return (
+                   <div key={i} className="card milestone flex align-center gap-4">
+                     <div style={{width: '20px', height: '20px', borderRadius: '50%', background: m.status==='active'?'transparent':dotColor, border: `3px solid ${borderColor}`, animation: m.status==='active' ? 'pulse 1.5s infinite alternate' : 'none'}}></div>
+                     <div>
+                       <div style={{fontWeight: 'bold'}}>{m.title}</div>
+                       <div style={{fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase'}}>{m.status}</div>
+                     </div>
+                   </div>
+                 )
+               })}
+            </div>
+          </div>
+
+          {/* Heatmap & Recent Cases Grid */}
+          <div className="grid gap-10" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', alignItems: 'start'}}>
+            
+            {/* Recent Cases */}
+            <div className="card">
+              <h3 className="mb-6">Recent Transactions</h3>
+              <div style={{overflowX: 'auto'}}>
+                <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
+                  <thead>
+                    <tr style={{borderBottom: '1px solid var(--border)', color: 'var(--text-muted)'}}>
+                      <th style={{padding: '12px 0'}}>Patient</th>
+                      <th style={{padding: '12px 0'}}>Insurer</th>
+                      <th style={{padding: '12px 0'}}>Decision</th>
+                      <th style={{padding: '12px 0'}}>Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cases.slice(0, 8).map(c => (
+                      <tr key={c._id} style={{borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer'}} onClick={() => navigateTo(`result.html?caseId=${c._id}`)}
+                          onMouseEnter={(e)=>e.currentTarget.style.background='var(--bg2)'} onMouseLeave={(e)=>e.currentTarget.style.background='transparent'}>
+                        <td style={{padding: '12px 0'}}>{c.patientId?.name || 'Unknown'}</td>
+                        <td style={{padding: '12px 0'}}><div className="badge" style={{background: c.insurerId?.color+'20', color: c.insurerId?.color}}>{c.insurerId?.code}</div></td>
+                        <td style={{padding: '12px 0'}}>
+                          <div className={`badge badge-${c.finalDecision==='approved'?'green':c.finalDecision==='denied'?'red':'amber'}`}>
+                            {c.finalDecision}
+                          </div>
+                        </td>
+                        <td style={{padding: '12px 0'}}>{c.confidenceScore || 0}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Insurance Coverage Heatmap */}
+            <div className="card">
+              <h3 className="mb-4">Insurance Rules Heatmap</h3>
+              <div className="grid gap-4" style={{gridTemplateColumns: 'repeat(3, 1fr)'}}>
+                 {insurers.map(insurer => (
+                    <div key={insurer._id} className="flex-col gap-2">
+                       <div style={{fontWeight: 'bold', color: insurer.color, borderBottom: `2px solid ${insurer.color}`, paddingBottom: '8px', marginBottom: '8px'}}>{insurer.name}</div>
+                       {insurer.rulesSummary.slice(0,6).map((r,i) => (
+                         <div key={i} className="flex justify-between align-center" style={{background: 'var(--bg2)', padding: '8px', borderRadius: '4px'}}>
+                           <div style={{fontSize: '0.8rem'}}>{r.procedureCode}</div>
+                           <div style={{width: '12px', height: '12px', borderRadius: '50%', background: r.covered && !r.requiresPriorAuth ? 'var(--green)' : r.covered ? 'var(--amber)' : 'var(--red)'}}></div>
+                         </div>
+                       ))}
+                    </div>
+                 ))}
+              </div>
+            </div>
+
+          </div>
+
+          <style>{`
+            @keyframes pulse {
+              from { opacity: 0.5; transform: scale(0.9); }
+              to { opacity: 1; transform: scale(1.1); }
+            }
+          `}</style>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<Dashboard />);
+  </script>
+</body>
+</html>

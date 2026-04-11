@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Patient Portal - MedAuth AI</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
+
+    window.navigateTo = (url) => {
+      gsap.to('body', {opacity: 0, y: -20, duration: 0.3, ease: 'power2.in', onComplete: () => {
+        window.location.href = url;
+      }});
+    };
+
+    fetch('../components/navbar.html').then(res => res.text())
+      .then(html => { document.getElementById('nav-placeholder').innerHTML = html; });
+
+    const { useEffect, useState } = React;
+    const STORAGE_KEY = 'medauth_selected_user';
+    const API_URL = `${API_BASE}/api`;
+
+    function PatientPortal() {
+      const [user, setUser] = useState(null);
+      const [cases, setCases] = useState([]);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
+        gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
+        
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.role !== 'patient') {
+             window.navigateTo('select-user.html');
+             return;
+          }
+          setUser(parsed);
+          
+          axios.get(`${API_URL}/cases?patientId=${parsed._id}`).then(res => {
+             setCases(res.data.data || []);
+             setLoading(false);
+          }).catch(err => {
+             console.error(err);
+             setLoading(false);
+          });
+        } else {
+          window.location.href = 'select-user.html';
+        }
+      }, []);
+
+      if (loading || !user) return <div className="container mt-8 text-center">Loading Patient Data...</div>;
+
+      return (
+        <div className="container" style={{paddingTop: '60px', paddingBottom: '80px'}}>
+           <div className="flex justify-between align-center mb-8 pb-4" style={{borderBottom: '1px solid var(--border)'}}>
+              <div>
+                 <h1 style={{fontSize: '2.5rem', marginBottom: '0.5rem'}}>Welcome, {user.name}</h1>
+                 <p style={{color: 'var(--text-muted)'}}>Manage your medical authorizations and records.</p>
+              </div>
+              <div className="avatar" style={{width: '60px', height: '60px', fontSize: '1.5rem', background: 'rgba(45, 212, 191, 0.1)', color: 'var(--teal)', border: '2px solid var(--teal)'}}>
+                 {user.avatar}
+              </div>
+           </div>
+
+           <div className="card mb-8" style={{borderLeft: '4px solid var(--teal)'}}>
+              <h3>Your Provider Team</h3>
+              <p style={{color: 'var(--text-muted)', marginTop: '0.5rem'}}>
+                Your primary care physician manages your prior authorizations. If you require a new procedure, please consult your doctor.
+              </p>
+           </div>
+
+           <h2 className="mb-4">Recent Authorization Requests</h2>
+           {cases.length === 0 ? (
+              <div className="card text-center" style={{padding: '40px'}}>
+                 <p style={{color: 'var(--text-muted)'}}>You have no prior authorization cases currently filed.</p>
+              </div>
+           ) : (
+              <div className="grid gap-4" style={{gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))'}}>
+                 {cases.map((c, i) => {
+                    let badgeCol = 'var(--text-muted)';
+                    let badgeBg = 'var(--bg2)';
+                    if (c.finalDecision === 'approved') { badgeCol = 'var(--green)'; badgeBg = 'rgba(16,185,129,0.1)'; }
+                    if (c.finalDecision === 'denied') { badgeCol = 'var(--red)'; badgeBg = 'rgba(239,68,68,0.1)'; }
+                    if (c.finalDecision === 'escalated') { badgeCol = 'var(--amber)'; badgeBg = 'rgba(245,158,11,0.1)'; }
+
+                    return (
+                        <div key={i} className="card flex-col gap-2 cursor-pointer" onClick={() => window.navigateTo(`result.html?caseId=${c._id}`)}
+                             style={{border: '1px solid var(--border)', transition: 'transform 0.2s'}}
+                             onMouseEnter={(e)=>e.currentTarget.style.transform='translateY(-4px)'}
+                             onMouseLeave={(e)=>e.currentTarget.style.transform='translateY(0)'}>
+                           
+                           <div className="flex justify-between align-center">
+                              <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{new Date(c.createdAt).toLocaleDateString()}</span>
+                              <div className="badge" style={{color: badgeCol, background: badgeBg, border: `1px solid ${badgeCol}`}}>
+                                 {c.finalDecision.toUpperCase()}
+                              </div>
+                           </div>
+                           <h3 style={{fontSize: '1.2rem', marginTop: '0.5rem'}}>{c.agentOutputs?.document?.data?.requestedProcedure || 'Medical Procedure'}</h3>
+                           <p style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
+                              Insurer: {c.insurerId?.name || 'Unknown'}
+                           </p>
+                        </div>
+                    );
+                 })}
+              </div>
+           )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<PatientPortal />);
+  </script>
+</body>
+</html>

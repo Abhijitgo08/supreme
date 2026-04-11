@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Result - MedAuth AI</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
+
+    window.navigateTo = (url) => {
+      gsap.to('body', {opacity: 0, y: -20, duration: 0.3, ease: 'power2.in', onComplete: () => {
+        window.location.href = url;
+      }});
+    };
+
+    fetch('../components/navbar.html').then(res => res.text())
+      .then(html => { document.getElementById('nav-placeholder').innerHTML = html; });
+
+    const { useEffect, useState } = React;
+    const API_URL = `${API_BASE}/api`;
+
+    function ResultPage() {
+      const caseId = new URLSearchParams(window.location.search).get('caseId');
+      
+      const [caseData, setCaseData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+
+      useEffect(() => {
+        if (!caseId) {
+          window.navigateTo('dashboard.html');
+          return;
+        }
+
+        window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
+        gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
+
+        let attempts = 0;
+        
+        const fetchCase = async () => {
+          try {
+            const res = await axios.get(`${API_URL}/cases/${caseId}`);
+            const data = res.data.data;
+            
+            // Check if status is still processing - if so, we poll
+            if (data.status === 'processing' || data.status === 'pending') {
+              attempts++;
+              if (attempts < 10) {
+                setTimeout(fetchCase, 2000);
+              } else {
+                setError("Result is taking too long. Please check the dashboard later.");
+                setLoading(false);
+              }
+              return;
+            }
+
+            setCaseData(data);
+            setLoading(false);
+            
+            // Animate hero badge
+            setTimeout(() => {
+              gsap.from('.decision-badge', {scale: 0.5, opacity: 0, duration: 0.8, ease: 'elastic.out(1, 0.5)'});
+              gsap.from('.agent-row', {y: 20, opacity: 0, stagger: 0.1, duration: 0.5});
+            }, 100);
+
+          } catch (err) {
+            setError(err.message);
+            setLoading(false);
+          }
+        };
+
+        fetchCase();
+      }, [caseId]);
+
+      if (loading) return <div className="container mt-8 text-center">Loading final results...</div>;
+      if (error) return <div className="container mt-8 text-center" style={{color: 'var(--red)'}}>{error}</div>;
+
+      // Extract details
+      const c = caseData;
+      let badgeCol = 'var(--text-muted)';
+      let badgeBg = 'var(--bg2)';
+      let statusText = String(c.finalDecision).toUpperCase();
+      
+      if (c.finalDecision === 'approved') { badgeCol = 'var(--green)'; badgeBg = 'rgba(16,185,129,0.1)'; }
+      if (c.finalDecision === 'denied') { badgeCol = 'var(--red)'; badgeBg = 'rgba(239,68,68,0.1)'; }
+      if (c.finalDecision === 'escalated') { badgeCol = 'var(--amber)'; badgeBg = 'rgba(245,158,11,0.1)'; statusText = 'ESCALATED FOR REVIEW'; }
+
+      const agents = c.agentOutputs || {};
+
+      return (
+        <div className="container" style={{paddingTop: '60px', paddingBottom: '80px'}}>
+          
+          <div className="text-center mb-8">
+            <div className="decision-badge" style={{display: 'inline-block', color: badgeCol, background: badgeBg, border: `2px solid ${badgeCol}`, padding: '16px 40px', borderRadius: '40px', fontSize: '2.5rem', fontWeight: '800', marginBottom: '1rem'}}>
+              {statusText}
+            </div>
+            <div style={{color: 'var(--text-muted)', fontSize: '1.2rem'}}>
+              Decision made in {((c.processingTimeMs || 0)/1000).toFixed(1)} seconds | Confidence: {c.confidenceScore}%
+            </div>
+            <div className="mt-2" style={{color: 'var(--text-dim)'}}>
+              Patient: {c.patientId?.name} | Insurer: {c.insurerId?.name}
+            </div>
+          </div>
+
+          <div className="grid gap-8" style={{gridTemplateColumns: 'minmax(400px, 1fr) minmax(300px, 1fr)', alignItems: 'start'}}>
+            
+            {/* Left Column */}
+            <div className="card flex-col gap-4">
+              <h2 style={{borderBottom: '1px solid var(--border)', paddingBottom: '1rem', color: 'var(--purple-light)'}}>Why this decision was made</h2>
+              <p style={{fontSize: '1.1rem', lineHeight: '1.6'}}>{c.decisionExplanation || 'No explanation generated.'}</p>
+              
+              {c.policyCitation && (
+                <div style={{background: 'var(--bg2)', borderLeft: '4px solid var(--purple)', padding: '16px', borderRadius: '0 8px 8px 0'}} className="mt-4">
+                  <div style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px'}}>Policy Citation</div>
+                  <div className="badge badge-purple" style={{fontFamily: 'monospace', fontSize: '0.9rem', marginBottom: '1rem'}}>{c.policyCitation}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column */}
+            <div className="card flex-col gap-4">
+               <h2 style={{borderBottom: '1px solid var(--border)', paddingBottom: '1rem', color: 'var(--teal)'}}>AI Agent Audit Trail</h2>
+               
+               <div className="agent-row mt-4" style={{borderBottom: '1px solid var(--border)', paddingBottom: '1rem'}}>
+                 <div className="flex justify-between align-center mb-2">
+                   <div style={{fontWeight: 'bold', color: 'var(--teal)'}}>Document Agent</div>
+                   <div className="badge" style={{background: 'var(--surface)'}}>{agents.document?.processingTimeMs}ms</div>
+                 </div>
+                 <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
+                    Extracted: {agents.document?.data?.requestedProcedure || 'Unknown'}<br/>
+                    Codes: {agents.document?.data?.procedureCodes?.join(', ')}<br/>
+                    ICD-10: {agents.document?.data?.diagnosisCodes?.join(', ')}
+                 </div>
+               </div>
+
+               <div className="agent-row mt-2" style={{borderBottom: '1px solid var(--border)', paddingBottom: '1rem'}}>
+                 <div className="flex justify-between align-center mb-2">
+                   <div style={{fontWeight: 'bold', color: 'var(--blue)'}}>Clinical Agent</div>
+                   <div className="badge" style={{background: 'var(--surface)'}}>{agents.clinical?.processingTimeMs}ms</div>
+                 </div>
+                 <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
+                    Medically Necessary: {agents.clinical?.medicallyNecessary ? <span style={{color:'var(--green)'}}>YES</span> : <span style={{color:'var(--red)'}}>NO</span>}<br/>
+                    <div className="mt-2" style={{fontStyle:'italic'}}>"{agents.clinical?.rationale}"</div>
+                 </div>
+               </div>
+
+               <div className="agent-row mt-2" style={{borderBottom: '1px solid var(--border)', paddingBottom: '1rem'}}>
+                 <div className="flex justify-between align-center mb-2">
+                   <div style={{fontWeight: 'bold', color: 'var(--amber)'}}>Policy Agent</div>
+                   <div className="badge" style={{background: 'var(--surface)'}}>{agents.policy?.processingTimeMs}ms</div>
+                 </div>
+                 <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
+                    Covered: {agents.policy?.covered ? <span style={{color:'var(--green)'}}>YES</span> : <span style={{color:'var(--red)'}}>NO</span>}<br/>
+                    Section: {agents.policy?.policySection}<br/>
+                    Rule: {agents.policy?.citedRule}
+                 </div>
+               </div>
+
+               <div className="agent-row mt-2">
+                 <div className="flex justify-between align-center mb-2">
+                   <div style={{fontWeight: 'bold', color: 'var(--coral)'}}>Escalation Agent</div>
+                   <div className="badge" style={{background: 'var(--surface)'}}>{agents.escalation?.processingTimeMs}ms</div>
+                 </div>
+                 <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
+                    Requires Human: {agents.escalation?.requiresHuman ? <span style={{color:'var(--red)'}}>YES</span> : <span style={{color:'var(--green)'}}>NO</span>}<br/>
+                    {agents.escalation?.requiresHuman && <div>Reason: <span style={{color:'var(--coral)'}}>{agents.escalation?.reason}</span></div>}
+                 </div>
+               </div>
+            </div>
+          </div>
+
+          <div className="flex gap-4 justify-center" style={{marginTop: '4rem'}}>
+             <button className="btn btn-outline" onClick={() => alert("Report downloaded! (Simulated)")}>Download Report</button>
+             <button className="btn btn-outline" onClick={() => navigateTo('upload.html')}>New Case &rarr;</button>
+             <button className="btn btn-outline" onClick={() => navigateTo('dashboard.html')}>View Dashboard</button>
+             {c.finalDecision === 'escalated' && (
+               <button className="btn" style={{backgroundColor: 'var(--amber)', color: '#000'}} onClick={() => alert("Opening human review queue...")}>View Human Review Queue</button>
+             )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<ResultPage />);
+  </script>
+</body>
+</html>

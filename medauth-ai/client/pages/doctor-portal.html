@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Doctor Portal - MedAuth AI</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+  <style>
+    .slide-panel {
+       position: fixed; right: -600px; top: 0; width: 500px; height: 100vh;
+       background: var(--surface); border-left: 1px solid var(--border);
+       z-index: 100; padding: 40px; box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+       overflow-y: auto;
+    }
+    .overlay {
+       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+       background: rgba(0,0,0,0.6); z-index: 99; opacity: 0; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
+
+    window.navigateTo = (url) => {
+      gsap.to('body', {opacity: 0, y: -20, duration: 0.3, ease: 'power2.in', onComplete: () => {
+        window.location.href = url;
+      }});
+    };
+
+    fetch('../components/navbar.html').then(res => res.text())
+      .then(html => { document.getElementById('nav-placeholder').innerHTML = html; });
+
+    const { useEffect, useState, useRef } = React;
+    const STORAGE_KEY = 'medauth_selected_user';
+    const API_URL = `${API_BASE}/api`;
+
+    function DoctorPortal() {
+      const [user, setUser] = useState(null);
+      const [patients, setPatients] = useState([]);
+      const [cases, setCases] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [panelOpen, setPanelOpen] = useState(false);
+      const [selectedPatient, setSelectedPatient] = useState(null);
+
+      const panelRef = useRef(null);
+      const overlayRef = useRef(null);
+
+      useEffect(() => {
+        window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
+        gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
+        
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.role !== 'doctor') {
+             window.navigateTo('select-user.html');
+             return;
+          }
+          setUser(parsed);
+          
+          Promise.all([
+             axios.get(`${API_URL}/patients?doctorId=${parsed._id}`),
+             axios.get(`${API_URL}/cases?doctorId=${parsed._id}`)
+          ]).then(([patRes, caseRes]) => {
+             setPatients(patRes.data.data.filter(p => patRes.data.data.filter(x => x.role === 'patient')));
+             setCases(caseRes.data.data || []);
+             setLoading(false);
+          }).catch(err => {
+             console.error(err);
+             setLoading(false);
+          });
+        } else {
+          window.location.href = 'select-user.html';
+        }
+      }, []);
+
+      const openPatientPanel = (pat) => {
+         setSelectedPatient(pat);
+         setPanelOpen(true);
+         gsap.to(overlayRef.current, { opacity: 1, pointerEvents: 'auto', duration: 0.3 });
+         gsap.to(panelRef.current, { right: 0, duration: 0.4, ease: 'power3.out' });
+      };
+
+      const closePanel = () => {
+         setPanelOpen(false);
+         gsap.to(overlayRef.current, { opacity: 0, pointerEvents: 'none', duration: 0.3 });
+         gsap.to(panelRef.current, { right: -600, duration: 0.3, ease: 'power3.in' });
+      };
+
+      if (loading || !user) return <div className="container mt-8 text-center">Loading Clinical Dashboard...</div>;
+
+      const userPatients = patients.filter(p => p.role === 'patient'); 
+      const recentCases = cases.slice(0, 10);
+
+      return (
+        <div className="container" style={{paddingTop: '60px', paddingBottom: '80px'}}>
+           
+           <div className="flex justify-between align-center mb-8 pb-4" style={{borderBottom: '1px solid var(--border)'}}>
+              <div>
+                 <h1 style={{fontSize: '2.5rem', marginBottom: '0.5rem'}}>Provider Central</h1>
+                 <p style={{color: 'var(--text-muted)'}}>Dr. {user.name} | NPI: 88392104</p>
+              </div>
+              <div className="flex gap-4">
+                 <button className="btn btn-primary" onClick={() => window.navigateTo('upload.html')} style={{padding: '12px 24px'}}>+ New Authorization</button>
+              </div>
+           </div>
+
+           <div className="grid gap-8" style={{gridTemplateColumns: '1fr 2fr'}}>
+               {/* Left Column: Patient Roster */}
+               <div className="card">
+                  <h2 style={{borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1rem'}}>Active Patients</h2>
+                  <div className="flex-col gap-3">
+                     {userPatients.map(p => (
+                        <div key={p._id} className="flex align-center gap-4 cursor-pointer" style={{padding: '12px', background: 'var(--bg2)', borderRadius: '8px', border: '1px solid transparent', transition: 'border 0.2s'}} onClick={() => openPatientPanel(p)} onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--purple)'} onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}>
+                           <div className="avatar" style={{width: '40px', height: '40px', background: 'rgba(124, 111, 205, 0.1)', color: 'var(--purple)'}}>{p.avatar}</div>
+                           <div style={{flex: 1}}>
+                              <div style={{fontWeight: 'bold'}}>{p.name}</div>
+                              <div style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>Insurer ID: {p.insurerId?.code || 'None'}</div>
+                           </div>
+                           <span style={{color: 'var(--purple)'}}>→</span>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+
+               {/* Right Column: Recent Activity */}
+               <div className="card">
+                  <h2 style={{borderBottom: '1px solid var(--border)', paddingBottom: '1rem', marginBottom: '1rem'}}>Recent Authorizations</h2>
+                  <div style={{overflowX: 'auto'}}>
+                    <table style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left'}}>
+                      <thead>
+                        <tr style={{borderBottom: '1px solid var(--border)', color: 'var(--text-muted)'}}>
+                          <th style={{padding: '12px 0'}}>Patient</th>
+                          <th style={{padding: '12px 0'}}>Procedure</th>
+                          <th style={{padding: '12px 0'}}>Status</th>
+                          <th style={{padding: '12px 0'}}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentCases.map(c => {
+                           let statCol = 'var(--text-muted)';
+                           if (c.finalDecision === 'approved') statCol = 'var(--green)';
+                           if (c.finalDecision === 'denied') statCol = 'var(--red)';
+                           if (c.finalDecision === 'escalated') statCol = 'var(--amber)';
+                           return (
+                             <tr key={c._id} style={{borderBottom: '1px solid rgba(255,255,255,0.05)'}}>
+                               <td style={{padding: '12px 0'}}>{c.patientId?.name || 'Unknown'}</td>
+                               <td style={{padding: '12px 0'}}>{c.agentOutputs?.document?.data?.requestedProcedure || 'Data Missing'}</td>
+                               <td style={{padding: '12px 0'}}>
+                                  <div style={{color: statCol, fontWeight: 'bold'}}>{c.finalDecision.toUpperCase()}</div>
+                               </td>
+                               <td style={{padding: '12px 0'}}>
+                                  <button className="btn btn-outline" style={{padding: '4px 12px', fontSize: '0.8rem'}} onClick={() => window.navigateTo(`result.html?caseId=${c._id}`)}>View</button>
+                               </td>
+                             </tr>
+                           )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+               </div>
+           </div>
+
+           {/* Slide Panel & Overlay */}
+           <div ref={overlayRef} className="overlay" onClick={closePanel}></div>
+           <div ref={panelRef} className="slide-panel">
+               <button onClick={closePanel} style={{position: 'absolute', right: '20px', top: '20px', background: 'transparent', border: 'none', color: 'var(--text-muted)', fontSize: '1.5rem', cursor: 'pointer'}}>×</button>
+               {selectedPatient && (
+                 <div>
+                    <div className="flex align-center gap-6 mb-8 mt-4">
+                        <div className="avatar" style={{width: '80px', height: '80px', fontSize: '2rem', background: 'rgba(124, 111, 205, 0.1)', color: 'var(--purple)'}}>{selectedPatient.avatar}</div>
+                        <div>
+                           <h2 style={{fontSize: '2rem'}}>{selectedPatient.name}</h2>
+                           <div style={{color: 'var(--text-muted)'}}>Patient ID: {selectedPatient._id}</div>
+                        </div>
+                    </div>
+
+                    <div className="flex-col gap-6">
+                        <div>
+                           <div style={{textTransform: 'uppercase', fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '0.3rem'}}>Primary Insurance</div>
+                           <div className="card" style={{padding: '16px', background: 'var(--bg2)', border: '1px solid var(--border)'}}>
+                              {selectedPatient.insurerId ? `${selectedPatient.insurerId.name} (${selectedPatient.insurerId.code})` : 'Not on file'}
+                           </div>
+                        </div>
+
+                        <div>
+                           <div style={{textTransform: 'uppercase', fontSize: '0.8rem', color: 'var(--text-dim)', marginBottom: '0.3rem'}}>Authorization History</div>
+                           <div className="flex-col gap-2">
+                             {cases.filter(c => c.patientId && c.patientId._id === selectedPatient._id).map(c => (
+                                <div key={c._id} className="card flex justify-between align-center" style={{padding: '12px'}}>
+                                   <div>
+                                     <div style={{fontWeight: 'bold'}}>{c.agentOutputs?.document?.data?.requestedProcedure || 'Unknown'}</div>
+                                     <div style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{new Date(c.createdAt).toLocaleDateString()}</div>
+                                   </div>
+                                   <div className={`badge badge-${c.finalDecision==='approved'?'green':c.finalDecision==='denied'?'red':'amber'}`}>{c.finalDecision}</div>
+                                </div>
+                             ))}
+                             {cases.filter(c => c.patientId && c.patientId._id === selectedPatient._id).length === 0 && (
+                                <p style={{color: 'var(--text-muted)'}}>No past authorizations found.</p>
+                             )}
+                           </div>
+                         </div>
+                    </div>
+                 </div>
+               )}
+           </div>
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<DoctorPortal />);
+  </script>
+</body>
+</html>

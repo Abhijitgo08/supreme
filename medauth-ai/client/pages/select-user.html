@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Select User - MedAuth AI</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+</head>
+<body>
+  <div id="nav-placeholder"></div>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
+
+    gsap.registerPlugin(ScrollTrigger);
+
+    window.navigateTo = (url) => {
+      gsap.to('body', {opacity: 0, y: -20, duration: 0.3, ease: 'power2.in', onComplete: () => {
+        window.location.href = url;
+      }});
+    };
+
+    fetch('../components/navbar.html')
+      .then(res => res.text())
+      .then(html => { document.getElementById('nav-placeholder').innerHTML = html; });
+
+    const { useEffect, useState } = React;
+    const STORAGE_KEY = 'medauth_selected_user';
+    const API_URL = `${API_BASE}/api`;
+
+    function SelectUser() {
+      const [users, setUsers] = useState([]);
+      const [loading, setLoading] = useState(true);
+
+      useEffect(() => {
+        window.addEventListener('pageshow', (e) => { if (e.persisted) gsap.set('body', {opacity: 1, y: 0, scale: 1}); });
+        gsap.fromTo('body', {opacity: 0, y: 20}, {opacity: 1, y: 0, duration: 0.5, ease: 'power2.out'});
+        
+        axios.get(`${API_URL}/patients`)
+          .then(res => {
+            setUsers(res.data.data);
+            setLoading(false);
+          })
+          .catch(err => {
+            console.error(err);
+            setLoading(false);
+          });
+      }, []);
+
+      useEffect(() => {
+        if (!loading && users.length > 0) {
+          gsap.from('.user-card', {y: 40, opacity: 0, stagger: 0.1, ease: 'back.out(1.5)', duration: 0.6});
+        }
+      }, [loading, users]);
+
+      const selectUser = (user) => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+        const routes = { patient: 'patient-portal.html', doctor: 'doctor-portal.html', admin: 'admin-portal.html' };
+        window.navigateTo(routes[user.role] || 'patient-portal.html');
+      };
+
+      return (
+        <div className="container" style={{paddingTop: '80px', paddingBottom: '80px'}}>
+          <div className="text-center" style={{marginBottom: '60px'}}>
+            <h1 style={{fontSize: '3rem', marginBottom: '1rem'}}>Who are you today?</h1>
+            <p style={{fontSize: '1.2rem', color: 'var(--text-muted)'}}>Select a profile to continue — no login required.</p>
+          </div>
+
+          {loading ? (
+             <div className="text-center mt-8">
+               <div style={{fontSize: '1.5rem', marginBottom: '1rem'}}>Loading users from backend...</div>
+               <small style={{color:'var(--text-muted)'}}>(Make sure backend seed and server are running on port 3001!)</small>
+             </div>
+          ) : (
+            <div className="grid gap-8 justify-center" style={{gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', maxWidth: '1000px', margin: '0 auto'}}>
+              {users.map(user => {
+                let borderCol = 'var(--border)';
+                let bgCol = 'var(--bg2)';
+                if(user.role === 'patient') { borderCol = 'var(--teal)'; bgCol = 'rgba(45, 212, 191, 0.1)'; }
+                if(user.role === 'doctor') { borderCol = 'var(--purple)'; bgCol = 'rgba(124, 111, 205, 0.1)'; }
+                if(user.role === 'admin') { borderCol = 'var(--amber)'; bgCol = 'rgba(245, 158, 11, 0.1)'; }
+
+                return (
+                  <div key={user._id} className="card user-card flex-col align-center text-center" 
+                       style={{cursor: 'pointer', borderTop: `4px solid ${borderCol}`, transition: 'transform 0.2s, box-shadow 0.2s', position: 'relative', overflow: 'hidden'}}
+                       onClick={() => selectUser(user)}
+                       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = `0 10px 25px ${bgCol}`; }}
+                       onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)'; }}>
+                    
+                    <div className="avatar" style={{width: '80px', height: '80px', fontSize: '2rem', marginBottom: '1rem', background: bgCol, color: borderCol, border: `2px solid ${borderCol}`}}>{user.avatar}</div>
+                    <h2 style={{fontSize: '1.6rem'}}>{user.name}</h2>
+                    
+                    <div className="flex gap-2 justify-center mt-4">
+                      <div className="badge text-dim" style={{background: 'var(--bg3)', border: '1px solid var(--border)'}}>{user.role}</div>
+                      {user.insurerId ? (
+                        <div className="badge" style={{background: user.insurerId.color + '20', color: user.insurerId.color, border: `1px solid ${user.insurerId.color}40`}}>
+                          {user.insurerId.name}
+                        </div>
+                      ) : (
+                        <div className="badge badge-amber">ALL INSURERS</div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<SelectUser />);
+  </script>
+</body>
+</html>
