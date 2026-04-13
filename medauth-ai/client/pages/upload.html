@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Upload - MedAuth AI</title>
   <link rel="stylesheet" href="../assets/styles.css">
-  
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.development.min.js" crossorigin></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.development.min.js"
+    crossorigin></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="/client/assets/nav.js"></script>
@@ -14,6 +16,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
 </head>
+
 <body>
   <div id="nav-placeholder"></div>
   <div id="root"></div>
@@ -40,18 +43,18 @@
       const [files, setFiles] = useState([]);
       const [isDragging, setIsDragging] = useState(false);
       const [uploading, setUploading] = useState(false);
-      
+
       const fileInputRef = useRef(null);
 
       useEffect(() => {
-        
+
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           try {
             const u = JSON.parse(stored);
             setUser(u);
             if (u.insurerId) setSelectedInsurerId(u.insurerId._id);
-          } catch(e) {}
+          } catch (e) { }
         } else {
           navigateTo('select-user.html');
         }
@@ -87,7 +90,7 @@
           const uploadRes = await axios.post(`${API_URL}/upload`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
           });
-          
+
           if (uploadRes.data.success) {
             const finalPatientId = user.role?.toLowerCase() === 'patient' ? user._id : selectedPatientId;
             if (!finalPatientId) {
@@ -115,52 +118,52 @@
       const selectedInsurer = insurers.find(i => i._id === selectedInsurerId);
 
       return (
-        <div className="container" style={{paddingTop: '60px', paddingBottom: '80px'}}>
-           {user && (
-            <div className="flex align-center gap-4" style={{position: 'absolute', top: '100px', right: '40px', background: 'var(--surface)', padding: '10px 20px', borderRadius: '40px', border: '1px solid var(--border)'}}>
-              <div className="avatar" style={{width: '40px', height: '40px', fontSize: '1rem', background: 'var(--bg2)', color: 'var(--text)'}}>{user.avatar}</div>
+        <div className="container" style={{ paddingTop: '60px', paddingBottom: '80px' }}>
+          {user && (
+            <div className="flex align-center gap-4" style={{ position: 'absolute', top: '100px', right: '40px', background: 'var(--surface)', padding: '10px 20px', borderRadius: '40px', border: '1px solid var(--border)' }}>
+              <div className="avatar" style={{ width: '40px', height: '40px', fontSize: '1rem', background: 'var(--bg2)', color: 'var(--text)' }}>{user.avatar}</div>
               <div>
-                <div style={{fontWeight: 'bold', fontSize: '1rem'}}>{user.name}</div>
-                <div style={{color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase'}}>{user.role}</div>
+                <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{user.name}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>{user.role}</div>
               </div>
             </div>
           )}
 
-          <h1 style={{fontSize: '2.5rem', marginBottom: '2rem'}}>Start AI Prior Authorization</h1>
+          <h1 style={{ fontSize: '2.5rem', marginBottom: '2rem' }}>Start AI Prior Authorization</h1>
 
-          <div className="grid gap-8" style={{gridTemplateColumns: 'minmax(400px, 1fr) 350px', alignItems: 'start'}}>
-            
+          <div className="grid gap-8" style={{ gridTemplateColumns: 'minmax(400px, 1fr) 350px', alignItems: 'start' }}>
+
             <div className="flex-col gap-6">
               <div className="card">
                 <h3 className="mb-4">Upload Medical Records</h3>
-                <div 
+                <div
                   className={`drag-zone mt-4 ${isDragging ? 'active' : ''}`}
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                   onDragLeave={() => setIsDragging(false)}
                   onDrop={handleDrop}
                   onClick={() => fileInputRef.current.click()}
                 >
-                  <div style={{fontSize: '3rem', marginBottom: '1rem', color: 'var(--purple)'}}>📁</div>
-                  <p style={{fontSize: '1.2rem', fontWeight: '500'}}>Drop medical records here</p>
-                  <p style={{color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem'}}>PDF, images, and text documents accepted.</p>
-                  <input type="file" multiple ref={fileInputRef} accept=".pdf,.txt,.doc,.docx,.jpg,.png" style={{display: 'none'}} onChange={(e) => {
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem', color: 'var(--purple)' }}>📁</div>
+                  <p style={{ fontSize: '1.2rem', fontWeight: '500' }}>Drop medical records here</p>
+                  <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.9rem' }}>PDF, images, and text documents accepted.</p>
+                  <input type="file" multiple ref={fileInputRef} accept=".pdf,.txt,.doc,.docx,.jpg,.png" style={{ display: 'none' }} onChange={(e) => {
                     if (e.target.files.length) setFiles(prev => [...prev, ...Array.from(e.target.files)]);
                   }} />
                 </div>
 
                 {files.length > 0 && (
                   <div className="mt-4 flex-col gap-2">
-                    <div style={{fontWeight: '500', marginBottom: '0.5rem'}}>Attached Files:</div>
+                    <div style={{ fontWeight: '500', marginBottom: '0.5rem' }}>Attached Files:</div>
                     {files.map((file, idx) => (
-                      <div key={idx} className="flex justify-between align-center" style={{padding: '12px', background: 'var(--bg2)', borderRadius: '8px', border: '1px solid var(--border)'}}>
+                      <div key={idx} className="flex justify-between align-center" style={{ padding: '12px', background: 'var(--bg2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                         <div className="flex align-center gap-4">
-                          <span style={{fontSize: '1.2rem'}}>📎</span>
+                          <span style={{ fontSize: '1.2rem' }}>📎</span>
                           <div>
-                            <div style={{fontSize: '0.95rem'}}>{file.name}</div>
-                            <div style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{(file.size / 1024).toFixed(1)} KB</div>
+                            <div style={{ fontSize: '0.95rem' }}>{file.name}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{(file.size / 1024).toFixed(1)} KB</div>
                           </div>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); handleRemove(idx); }} style={{background: 'transparent', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: '1.2rem'}}>×</button>
+                        <button onClick={(e) => { e.stopPropagation(); handleRemove(idx); }} style={{ background: 'transparent', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: '1.2rem' }}>×</button>
                       </div>
                     ))}
                   </div>
@@ -169,15 +172,12 @@
 
               <div className="card">
                 <h3 className="mb-4">Need sample documents?</h3>
-                <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem'}}>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                   Download these sample medical records to test the AI system:
                 </p>
                 <div className="flex-col gap-2">
-                  <a href="../samples/comprehensive_ortho_record.txt" download style={{padding: '8px 12px', background: 'var(--bg2)', borderRadius: '6px', color: 'var(--blue)', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)'}}>
-                    <span style={{fontSize: '1.2rem'}}>📄</span> Ortho Record (TXT)
-                  </a>
-                  <a href="../samples/patient_rahul_cardiology_record.pdf" download style={{padding: '8px 12px', background: 'var(--bg2)', borderRadius: '6px', color: 'var(--red)', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)'}}>
-                    <span style={{fontSize: '1.2rem'}}>📕</span> Cardiology Record (PDF)
+                  <a href="../samples/comprehensive_ortho_record.txt" download style={{ padding: '8px 12px', background: 'var(--bg2)', borderRadius: '6px', color: 'var(--blue)', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '1.2rem' }}>📄</span> Ortho Record (TXT)
                   </a>
                 </div>
               </div>
@@ -200,8 +200,8 @@
                 </select>
               </div>
 
-              <button className={`btn btn-primary w-full ${(!files.length || !selectedInsurerId || uploading) ? 'disabled' : ''}`} 
-                      style={{fontSize: '1.2rem', padding: '16px'}} onClick={handleSubmit}>
+              <button className={`btn btn-primary w-full ${(!files.length || !selectedInsurerId || uploading) ? 'disabled' : ''}`}
+                style={{ fontSize: '1.2rem', padding: '16px' }} onClick={handleSubmit}>
                 {uploading ? 'Processing locally with Ollama...' : 'Analyze with AI →'}
               </button>
             </div>
@@ -209,14 +209,14 @@
             <div className="flex-col gap-6">
               <div className="card">
                 <h3 className="mb-4">What happens next</h3>
-                <div className="flex-col gap-4 mt-8 relative" style={{marginLeft: '10px'}}>
+                <div className="flex-col gap-4 mt-8 relative" style={{ marginLeft: '10px' }}>
                   {['Document Agent reads files', 'Clinical Agent assesses necessity', 'Policy Agent checks coverage', 'Final decision delivered'].map((step, i) => (
-                    <div key={i} className="flex align-center gap-4 relative" style={{zIndex: 2}}>
-                      <div style={{width: '16px', height: '16px', borderRadius: '50%', background: i===3 ? 'var(--purple)' : 'var(--bg2)', border: `2px solid var(--purple)`}}></div>
-                      <div style={{fontSize: '0.95rem', fontWeight: i===3 ? '600' : '400', color: i===3 ? 'var(--text)' : 'var(--text-muted)'}}>{step}</div>
+                    <div key={i} className="flex align-center gap-4 relative" style={{ zIndex: 2 }}>
+                      <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: i === 3 ? 'var(--purple)' : 'var(--bg2)', border: `2px solid var(--purple)` }}></div>
+                      <div style={{ fontSize: '0.95rem', fontWeight: i === 3 ? '600' : '400', color: i === 3 ? 'var(--text)' : 'var(--text-muted)' }}>{step}</div>
                     </div>
                   ))}
-                  <div style={{position: 'absolute', left: '7px', top: '10px', bottom: '20px', width: '2px', background: 'var(--border)', zIndex: 1}}></div>
+                  <div style={{ position: 'absolute', left: '7px', top: '10px', bottom: '20px', width: '2px', background: 'var(--border)', zIndex: 1 }}></div>
                 </div>
               </div>
 
@@ -224,14 +224,14 @@
                 <div className="card">
                   <div className="flex justify-between align-center mb-4">
                     <h3>{selectedInsurer.name}</h3>
-                    <div className="badge" style={{background: selectedInsurer.color + '20', color: selectedInsurer.color, border: `1px solid ${selectedInsurer.color}40`}}>{selectedInsurer.code}</div>
+                    <div className="badge" style={{ background: selectedInsurer.color + '20', color: selectedInsurer.color, border: `1px solid ${selectedInsurer.color}40` }}>{selectedInsurer.code}</div>
                   </div>
-                  <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem'}}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                     This insurer has {selectedInsurer.rulesSummary?.length || 0} active policy rules cached for AI evaluation.
                   </p>
-                  <ul style={{fontSize: '0.85rem', color: 'var(--text-muted)', paddingLeft: '20px', margin: 0}}>
-                    {selectedInsurer.rulesSummary?.slice(0,3).map((r,i) => (
-                      <li key={i} style={{marginBottom: '0.5rem'}}>{r.procedureCode} - {r.procedureName}</li>
+                  <ul style={{ fontSize: '0.85rem', color: 'var(--text-muted)', paddingLeft: '20px', margin: 0 }}>
+                    {selectedInsurer.rulesSummary?.slice(0, 3).map((r, i) => (
+                      <li key={i} style={{ marginBottom: '0.5rem' }}>{r.procedureCode} - {r.procedureName}</li>
                     ))}
                     {selectedInsurer.rulesSummary?.length > 3 && <li>And more...</li>}
                   </ul>
@@ -248,4 +248,5 @@
     root.render(<UploadPage />);
   </script>
 </body>
+
 </html>
