@@ -156,6 +156,21 @@
               </div>
 
               <div className="card">
+                <h3 className="mb-4">Need sample documents?</h3>
+                <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem'}}>
+                  Download these sample medical records to test the AI system:
+                </p>
+                <div className="flex-col gap-2">
+                  <a href="../samples/comprehensive_ortho_record.txt" download style={{padding: '8px 12px', background: 'var(--bg2)', borderRadius: '6px', color: 'var(--blue)', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)'}}>
+                    <span style={{fontSize: '1.2rem'}}>📄</span> Ortho Record (TXT)
+                  </a>
+                  <a href="../samples/patient_rahul_cardiology_record.pdf" download style={{padding: '8px 12px', background: 'var(--bg2)', borderRadius: '6px', color: 'var(--red)', textDecoration: 'none', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)'}}>
+                    <span style={{fontSize: '1.2rem'}}>📕</span> Cardiology Record (PDF)
+                  </a>
+                </div>
+              </div>
+
+              <div className="card">
                 <h3 className="mb-4">Select Target Insurer</h3>
                 <select className="mt-4" value={selectedInsurerId} onChange={e => setSelectedInsurerId(e.target.value)}>
                   <option value="" disabled>Select insurance company...</option>

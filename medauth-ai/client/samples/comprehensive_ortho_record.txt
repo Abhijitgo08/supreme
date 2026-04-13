@@ -1,0 +1,76 @@
+=========================================================
+MEMORIAL GENERAL HOSPITAL - COMPREHENSIVE MEDICAL RECORD
+PATIENT NAME: Sarah Jenkins
+DOB: 08/22/1960
+MRN: 99402-B
+INSURANCE ID: INS-2024-8742
+=========================================================
+
+[DOCUMENT 1: ORTHOPEDIC CONSULTATION NOTE]
+DATE OF VISIT: 03/15/2026
+PROVIDER: Dr. Marcus Thorne, MD, FAAOS
+DEPARTMENT: Orthopedic Surgery
+
+CHIEF COMPLAINT:
+Severe, unrelenting right knee pain.
+
+HISTORY OF PRESENT ILLNESS:
+The patient is a 65-year-old female presenting with a 5-year history of progressive right knee pain. The pain is described as a deep ache that worsens with weight-bearing and limits her walking capacity to less than 1 block. She reports significant morning stiffness lasting up to an hour. Over the past 6 months, she has noticed clicking, grinding (crepitus), and occasional buckling of the knee. Pain frequently interrupts her sleep. 
+
+CONSERVATIVE MANAGEMENT (FAILED):
+The patient has exhausted all non-operative therapies over the last 18 months:
+1. Weight loss of 15 lbs.
+2. NSAIDs (Meloxicam 15mg daily) and Tylenol around the clock with minimal relief.
+3. Two separate courses of formal Physical Therapy (last completed 01/10/2026), each lasting 6 weeks. PT notes indicate failure to improve functional mobility.
+4. Intra-articular Corticosteroid injections x 3 (most recent on 12/05/2025). The last injection provided less than 2 weeks of relief.
+5. Viscosupplementation (Hyaluronic acid) series completed last year without sustained benefit.
+
+PHYSICAL EXAMINATION:
+Right Knee: Apparent varus deformity. Moderate joint effusion present. Palpation reveals severe medial joint line tenderness. Range of motion is explicitly limited to 5 degrees to 105 degrees (flexion contracture). Extreme crepitus noted throughout the arc of motion. Ligaments (ACL, PCL, MCL, LCL) are stable.
+
+DIAGNOSIS:
+1. Primary osteoarthritis of right knee (ICD-10: M17.11)
+2. Chronic knee pain
+
+PLAN & RATIONALE:
+Given the radiographic evidence of end-stage tri-compartmental osteoarthritis (bone-on-bone), combined with the complete exhaustion of exhaustive conservative management therapies for well over 6 months, her quality of life is severely impacted. Without surgical intervention, she will likely lose her independent ambulation. 
+
+Therefore, I am strongly recommending a Right Total Knee Arthroplasty (TKA). I have discussed the risks, benefits, and alternatives of surgery with the patient, and she wishes to proceed. 
+
+REQUESTED PROCEDURE:
+Procedure: Total Knee Arthroplasty (Right)
+CPT Code Requested: 27447
+
+
+=========================================================
+[DOCUMENT 2: RADIOLOGY REPORT - MRI RIGHT KNEE]
+DATE OF EXAM: 02/28/2026
+REFERRING PHYSICIAN: Dr. Thomas Aris, PCP
+
+INDICATION:
+Chronic right knee pain, evaluate for structural damage.
+
+FINDINGS:
+1. Medial Compartment: Complete full-thickness cartilage loss with subchondral cystic changes and reactive bone marrow edema. Bone-on-bone articulation is visualized. Severe medial meniscal maceration.
+2. Patellofemoral Compartment: High-grade chondral wear predominantly involving the medial and central facets of the patella. Marginal osteophytosis noted.
+3. Lateral Compartment: Moderate chondral thinning but preserved joint space.
+4. Ligaments: Cruciate and collateral ligaments are intact.
+5. Joint Fluid: Moderate joint effusion with a prominent popliteal (Baker's) cyst measuring 4.2 x 2.1 cm.
+
+IMPRESSION:
+End-stage osteoarthritis heavily involving the medial and patellofemoral compartments with significant subchondral reactive changes and joint effusion. 
+=========================================================
+
+[DOCUMENT 3: OUTPATIENT PHYSICAL THERAPY DISCHARGE SUMMARY]
+DATE: 01/10/2026
+THERAPIST: Lauren Davis, DPT
+
+TREATMENT SUMMARY:
+Patient attended 12 sessions over 6 weeks focusing on quadriceps strengthening, hamstring flexibility, and gait mechanics. 
+
+OUTCOMES:
+Patient made very minimal progress. Pain levels remained an 8/10 on the VAS scale during functional exercises. Ambulation distance did not improve. Patient continues to require a cane for community ambulation. 
+
+RECOMMENDATION:
+Discharge from PT due to lack of meaningful progress. Patient referred back to Orthopedics for surgical evaluation.
+=========================================================
