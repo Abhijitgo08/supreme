@@ -34,6 +34,8 @@
     function UploadPage() {
       const [user, setUser] = useState(null);
       const [insurers, setInsurers] = useState([]);
+      const [patients, setPatients] = useState([]);
+      const [selectedPatientId, setSelectedPatientId] = useState('');
       const [selectedInsurerId, setSelectedInsurerId] = useState('');
       const [files, setFiles] = useState([]);
       const [isDragging, setIsDragging] = useState(false);
@@ -56,6 +58,9 @@
 
         axios.get(`${API_URL}/insurers`).then(res => {
           setInsurers(res.data.data);
+        });
+        axios.get(`${API_URL}/patients`).then(res => {
+          setPatients(res.data.data.filter(p => p.role?.toLowerCase() === 'patient'));
         });
       }, []);
 
@@ -84,8 +89,15 @@
           });
           
           if (uploadRes.data.success) {
+            const finalPatientId = user.role?.toLowerCase() === 'patient' ? user._id : selectedPatientId;
+            if (!finalPatientId) {
+              alert("Please select a patient before submitting.");
+              setUploading(false);
+              return;
+            }
             const caseRes = await axios.post(`${API_URL}/cases`, {
-              patientId: user._id,
+              patientId: finalPatientId,
+              doctorId: user.role?.toLowerCase() !== 'patient' ? user._id : null,
               insurerId: selectedInsurerId,
               uploadId: uploadRes.data.uploadId,
               extractedText: uploadRes.data.extractedText
@@ -169,6 +181,16 @@
                   </a>
                 </div>
               </div>
+
+              {user && user.role?.toLowerCase() !== 'patient' && (
+                <div className="card">
+                  <h3 className="mb-4">Select Patient</h3>
+                  <select className="mt-4" value={selectedPatientId} onChange={e => setSelectedPatientId(e.target.value)}>
+                    <option value="" disabled>Select patient...</option>
+                    {patients.map(p => <option key={p._id} value={p._id}>{p.name} (DOB: {p.dateOfBirth || 'N/A'})</option>)}
+                  </select>
+                </div>
+              )}
 
               <div className="card">
                 <h3 className="mb-4">Select Target Insurer</h3>
