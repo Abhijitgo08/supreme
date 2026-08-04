@@ -330,13 +330,3 @@ Sample medical records are included in the repository for testing prior authoriz
 You can upload these files directly via the **Doctor Portal** to experience the multi-agent decision pipeline in real-time.
 
 ---
-
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-<p center>
-  Made with ❤️ for faster, transparent, and AI-driven healthcare decisioning.
-</p>
